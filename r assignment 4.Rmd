@@ -1,0 +1,5 @@
+loading multiple packages at once
+```{r}
+library(pacman)
+```
+
