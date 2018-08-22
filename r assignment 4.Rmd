@@ -1,5 +1,113 @@
-loading multiple packages at once
+#loading multiple packages at once
 ```{r}
 library(pacman)
+p_load(dplyr, ggplot2, haven, magrittr, tidyverse, broom, psych, vcd, corrplot, DHARMa, caret)
+```
+#loading the training and testing data
+```{r}
+load("eye_FR_testdata-1")
+load("eye_FR_traindata-1")
+```
+
+#QUESTION 3
+```{r}
+#summary statistics for training data
+describeBy(traindata)
+```
+```{r}
+#mosaic plot for lineupacc, exposure, and lineuptpta
+#the mosaic plot shows that the longer people are exposed to the perp (exposure), the more accurate (lineupacc) they are in their identification. In addition, when the perp is absent from the lineup, particpants are more accurate in identying the perp. This relationship is inversed for inaccurate perp identification, the shorter the exposure and when the perp is present in the line up, the more likely participants are inaccurate in their identification. I would thus expect to see a significant relationship between these variabels and line up accuracy in my model.
+mosaic (~ lineupacc + exposure + lineuptpta, 
+        data = traindata)
+```
+```{r}
+#boxplot for lineuprt and lineupacc
+#the boxplot shows that as RT decreases (the faster their response) the more accurate the participant is in identifying the perp, whereas those who made inaccurate identifications took longer (RT increases).
+boxplot(lineuprt~lineupacc,data=traindata,
+  	xlab="Line Up Accuracy", ylab="Reaction Time")
+```
+```{r}
+#pairs panels
+#the pairs panels below show the correlations between variables, none of the variables are too highly correlated, which means none of the variables are redundant. In addition, confidence has a positive relationship with line up accuracy, meaning that as accuracy increases, so does confidence. While line up RT has a negative relationship with line up accuracy, in other words, as accuracy increases, line up RT will decrease. Thus, participants are faster (slower RT) when they are accurate.
+pairs.panels(traindata)
+```
+from the descriptives above, we should see a relationship between line up accuracy, exposure, and lineuptpta.
+
+#QUESTION 4
+```{r}
+#logistic regression model1 without interactions
+#lineuptpta when the perp is present is significant, and short exposure is also significant. This suggests that the relationship between accuracy and the perp beign present is negative, thus, participants are more likely to be significantly correct when the perp is absent from the line up. Similarly, participants who are exposed to the perps for a shorter amount of time are significantly less accurate. These results are expected given the descriptives in Question1.
+model1 <- glm(lineupacc ~ lineuptpta + exposure, family = "binomial", data = traindata)
+summary(model1)
+```
+```{r}
+#logistic regression model2 with interactions
+#with interactions in the model, the perp being present in the lineup is no longer significant compared to model1. Short exposure is still negatively significant though. There is a significant negative interaction between the perp being present and face comparison, in other words, when the perp is present, participants are less likely to do slow, deliberate eature checking. On the other hand, when the perp is present, partcipants have a positive significant relationship between the perp being present and automatic recognition, in other words, when the perp is present, participants are more likely to automatically recognize the perp.
+model2 <- glm(lineupacc ~ lineuptpta + exposure + lineuptpta*facecomparison + lineuptpta*automatic, 
+                 family = "binomial", data = traindata)
+summary(model1)
+#comparing model1 and model2, the AIC score in model1 is 123.84 while in model2 it is 86.018. A lower AIC score indicates a better fit, thus model2 fits better.
+```
+
+#QUESTION 5A(i)
+```{r}
+#running model3 for lineuptpta and confidence
+model3 <- glm(lineupacc ~ lineuptpta + confidence, family = "binomial", data = traindata)
+summary(model3)
+```
+```{r}
+#predicting confidence of >80% if ta
+#there is a 0.75 probability of someone who is more than 80% confident (while target is absent from lineup) at being accurate
+predicting_ta <- data.frame(confidence = 80, lineuptpta = "ta")
+predict(model3, newdata=predicting_ta, type = "response") #probability
+
+```
+```{r}
+#predicting confidence of >80% if tp
+#as expected, the accuracy rate when the target is present, with a confidence of 80% or more, is still lower (0.51 - participants are only about accruate half the time) than that of when the target is absent (0.75). This suggests that participants are more accurate when the target is absent.
+predicting_tp <- data.frame(confidence = 80, lineuptpta = "tp")
+predict(model3, newdata=predicting_tp, type = "response") #probability
+
+```
+#QUESTION 5A(ii)
+```{r}
+#odds for ta
+#it is 3 times more likely for the participant to get the accurate perp when the perp is absent from the lineup.
+x <- predict(model3, newdata=predicting_ta, type = "response")
+odds <- x/(1-x)  #to get the answer in odds
+print(odds)
+```
+```{r}
+#odds for tp
+#as expected, it is 1.05 more likely for the participant to get the accurate perp when the perp is present in the lineup, which is less than when the perp is absent from the lineup.
+y <- predict(model3, newdata=predicting_tp, type = "response")
+odds <- y/(1-y)  #to get the answer in odds
+print(odds)
+```
+#QUESTION 5A(iii)
+```{r}
+#finding the partial odds ratio
+#The change in odds is 1.02, that is you are 1.02 times more likely to be accurate, which means that there is basically no difference.
+exp(coefficients(model3))
+```
+
+#QUESTION 5B
+```{r}
+#creating a confusing confusion matrix! 
+#the sensitivity (0.84) and specificity (0.90) scores are high, which means that the difference in prediction errors is low
+pred_model2 <- predict(model2, traindata, type = "response")
+table(round(pred_model2 + 0.05), traindata$lineupacc)
+confusionMatrix(as.factor(round(pred_model2 + 0.05)), as.factor(traindata$lineupacc)) %>% 
+  tidy() #cleaning up output
+```
+
+#QUESTION 6
+```{r}
+#please see word document in folder
+```
+
+#REPO IN GITHUB
+```{r}
+#
 ```
 
